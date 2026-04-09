@@ -159,6 +159,43 @@ class TestMissingModelSection:
         assert not any("no 'model' section" in i.message for i in issues)
 
 
+class TestBrowserMcpHygiene:
+    """Browser backends should stay out of mcp_servers."""
+
+    def test_warns_on_playwright_mcp_server(self):
+        issues = validate_config_structure({
+            "mcp_servers": {
+                "playwright": {
+                    "command": "npx",
+                    "args": ["-y", "@playwright/mcp@latest", "--browser=firefox"],
+                },
+            },
+        })
+        assert any("separate browser backend" in i.message for i in issues)
+
+    def test_warns_on_camoufox_mcp_server(self):
+        issues = validate_config_structure({
+            "mcp_servers": {
+                "camoufox": {
+                    "command": "uvx",
+                    "args": ["camoufox-mcp"],
+                },
+            },
+        })
+        assert any("separate browser backend" in i.message for i in issues)
+
+    def test_allows_context7_mcp_server(self):
+        issues = validate_config_structure({
+            "mcp_servers": {
+                "context7": {
+                    "url": "https://mcp.context7.com/mcp",
+                    "tools": {"include": ["resolve-library-id", "query-docs"]},
+                },
+            },
+        })
+        assert not any("separate browser backend" in i.message for i in issues)
+
+
 class TestConfigIssueDataclass:
     """ConfigIssue should be a proper dataclass."""
 
