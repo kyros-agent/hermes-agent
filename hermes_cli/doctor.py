@@ -12,6 +12,11 @@ import shutil
 from hermes_cli.config import get_project_root, get_hermes_home, get_env_path
 from hermes_constants import display_hermes_home
 
+try:
+    from tools.browser_camofox import check_camofox_available as _check_camofox_available
+except ImportError:
+    _check_camofox_available = None
+
 PROJECT_ROOT = get_project_root()
 HERMES_HOME = get_hermes_home()
 _DHH = display_hermes_home()  # user-facing display path (e.g. ~/.hermes or ~/.hermes/profiles/coder)
@@ -130,6 +135,56 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
         issues.append("Enable linger for the gateway user service: sudo loginctl enable-linger $USER")
     else:
         check_warn("Could not verify systemd linger", f"({linger_detail})")
+
+
+def _check_browser_backend_and_profile_config(issues: list[str]) -> None:
+    """Check Camofox health and detect legacy root/profile config drift."""
+    print()
+    print(color("◆ Browser Backend", Colors.CYAN, Colors.BOLD))
+
+    try:
+        from hermes_cli.config import read_raw_config
+        cfg = read_raw_config()
+    except Exception as exc:
+        check_warn("Could not read active browser config", f"({exc})")
+        return
+
+    browser_cfg = cfg.get("browser") if isinstance(cfg.get("browser"), dict) else {}
+    camofox_cfg = browser_cfg.get("camofox") if isinstance(browser_cfg.get("camofox"), dict) else {}
+    camofox_url = os.environ.get("CAMOFOX_URL", "").strip()
+
+    if camofox_url:
+        parsed = None
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(camofox_url)
+        except Exception:
+            parsed = None
+
+        if parsed and parsed.hostname not in {"localhost", "127.0.0.1"}:
+            check_warn("Camofox URL points off-host", f"({camofox_url})")
+            issues.append("Keep CAMOFOX_URL bound to localhost on Kyros hosts")
+
+        if _check_camofox_available is not None:
+            try:
+                if _check_camofox_available():
+                    check_ok("Camofox backend", f"({camofox_url} reachable)")
+                else:
+                    check_fail("Camofox backend", f"({camofox_url} unreachable)")
+                    issues.append(f"Camofox backend unreachable at {camofox_url}")
+            except Exception as exc:
+                check_warn("Camofox backend", f"(could not verify: {exc})")
+        else:
+            check_warn("Camofox backend", "(browser_camofox module not available)")
+    else:
+        check_warn("Camofox backend", "(CAMOFOX_URL not set)")
+        issues.append("Set CAMOFOX_URL to use the local Camofox browser backend")
+
+    if camofox_cfg.get("managed_persistence") is True:
+        check_ok("Camofox managed persistence", "(profile-scoped browser state enabled)")
+    else:
+        check_warn("Camofox managed persistence disabled", "(browser logins may not persist across tasks/restarts)")
+        issues.append("Enable browser.camofox.managed_persistence for stable profile-scoped browser state")
 
 
 def run_doctor(args):
@@ -336,6 +391,11 @@ def run_doctor(args):
                     issues.append(ci.message)
         except Exception:
             pass
+
+    # =========================================================================
+    # Check: Browser backend and profile-scoped config hygiene
+    # =========================================================================
+    _check_browser_backend_and_profile_config(issues)
 
     # =========================================================================
     # Check: Auth providers

@@ -138,6 +138,60 @@ def test_check_gateway_service_linger_skips_when_service_not_installed(monkeypat
     assert issues == []
 
 
+def _setup_browser_doctor_env(monkeypatch, tmp_path, managed_persistence, camofox_available):
+    """Shared setup for browser backend doctor tests."""
+    import yaml
+
+    home = tmp_path / ".hermes"
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "config.yaml").write_text(yaml.dump({
+        "browser": {"camofox": {"managed_persistence": managed_persistence}},
+    }))
+
+    # Patch both the env var AND the module-level get_hermes_home so that
+    # read_raw_config() (which calls get_hermes_home()) picks up the temp path
+    # even under pytest-xdist's separate worker process.
+    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("CAMOFOX_URL", "http://localhost:9377")
+    monkeypatch.setattr(doctor_mod, "HERMES_HOME", home)
+    monkeypatch.setattr("hermes_cli.config.get_hermes_home", lambda: home)
+    monkeypatch.setattr(doctor, "_check_camofox_available", lambda: camofox_available)
+
+
+def test_browser_backend_camofox_ok(monkeypatch, tmp_path, capsys):
+    """Doctor should report Camofox backend healthy when reachable and persistence enabled."""
+    _setup_browser_doctor_env(monkeypatch, tmp_path, managed_persistence=True, camofox_available=True)
+
+    issues = []
+    doctor._check_browser_backend_and_profile_config(issues)
+
+    out = capsys.readouterr().out
+    assert "Browser Backend" in out
+    assert "Camofox backend" in out
+    assert "Camofox managed persistence" in out
+    assert len(issues) == 0
+
+
+def test_browser_backend_camofox_missing_persistence_warns(monkeypatch, tmp_path, capsys):
+    """Doctor should warn when managed_persistence is not enabled."""
+    _setup_browser_doctor_env(monkeypatch, tmp_path, managed_persistence=False, camofox_available=True)
+
+    issues = []
+    doctor._check_browser_backend_and_profile_config(issues)
+
+    assert any("managed_persistence" in issue for issue in issues)
+
+
+def test_browser_backend_warns_when_camofox_unreachable(monkeypatch, tmp_path, capsys):
+    """Doctor should fail when CAMOFOX_URL is set but the server is unreachable."""
+    _setup_browser_doctor_env(monkeypatch, tmp_path, managed_persistence=True, camofox_available=False)
+
+    issues = []
+    doctor._check_browser_backend_and_profile_config(issues)
+
+    assert any("unreachable" in issue for issue in issues)
+
+
 # ── Memory provider section (doctor should only check the *active* provider) ──
 
 

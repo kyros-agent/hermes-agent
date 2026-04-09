@@ -448,7 +448,7 @@ DEFAULT_CONFIG = {
         "user_char_limit": 1375,     # ~500 tokens at 2.75 chars/token
         # External memory provider plugin (empty = built-in only).
         # Set to a provider name to activate: "openviking", "mem0",
-        # "hindsight", "holographic", "retaindb", "byterover".
+        # "hindsight", "retaindb", "byterover".
         # Only ONE external provider is allowed at a time.
         "provider": "",
     },
@@ -1361,6 +1361,12 @@ _VALID_CUSTOM_PROVIDER_FIELDS = {
 # Fields that look like they should be inside custom_providers, not at root
 _CUSTOM_PROVIDER_LIKE_FIELDS = {"base_url", "api_key", "rate_limit_delay", "api_mode"}
 
+# MCP server entries that imply a browser automation backend.
+# Registering these alongside the built-in browser tools can create duplicate
+# browser instances and conflict with session management.
+_BROWSER_MCP_NAME_HINTS = {"playwright", "camoufox", "camofox"}
+_BROWSER_MCP_COMMAND_HINTS = {"@playwright/mcp", "playwright-mcp", "camoufox-mcp", "camofox-browser"}
+
 
 @dataclass
 class ConfigIssue:
@@ -1478,6 +1484,34 @@ def validate_config_structure(config: Optional[Dict[str, Any]] = None) -> List["
             "    default: your-model-name\n"
             "    base_url: https://...",
         ))
+
+    # ── Browser/MCP hygiene ───────────────────────────────────────────────
+    mcp_servers = config.get("mcp_servers")
+    if isinstance(mcp_servers, dict):
+        for name, entry in mcp_servers.items():
+            if not isinstance(entry, dict):
+                issues.append(ConfigIssue(
+                    "warning",
+                    f"mcp_servers['{name}'] is not a dict",
+                    "Each MCP server entry should be a mapping with keys such as command, args, or url",
+                ))
+                continue
+
+            server_name = str(name).strip().lower()
+            command = str(entry.get("command") or "").strip().lower()
+            args = entry.get("args") or []
+            if isinstance(args, list):
+                args_text = " ".join(str(arg).lower() for arg in args)
+            else:
+                args_text = str(args).lower()
+
+            haystack = " ".join(part for part in (server_name, command, args_text) if part)
+            if any(hint in haystack for hint in _BROWSER_MCP_NAME_HINTS | _BROWSER_MCP_COMMAND_HINTS):
+                issues.append(ConfigIssue(
+                    "warning",
+                    f"MCP server '{name}' looks like a separate browser backend",
+                    "Use the built-in browser tools instead of registering a parallel browser MCP server.",
+                ))
 
     # ── Root-level keys that look misplaced ──────────────────────────────
     for key in config:

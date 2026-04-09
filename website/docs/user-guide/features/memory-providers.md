@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: "Memory Providers"
-description: "External memory provider plugins — Honcho, OpenViking, Mem0, Hindsight, Holographic, RetainDB, ByteRover, Supermemory"
+description: "External memory provider plugins — Honcho, OpenViking, Mem0, Hindsight, RetainDB, ByteRover, Supermemory"
 ---
 
 # Memory Providers
@@ -20,7 +20,7 @@ Or set manually in `~/.hermes/config.yaml`:
 
 ```yaml
 memory:
-  provider: openviking   # or honcho, mem0, hindsight, holographic, retaindb, byterover, supermemory
+  provider: openviking   # or honcho, mem0, hindsight, retaindb, byterover, supermemory
 ```
 
 ## How It Works
@@ -292,41 +292,6 @@ echo "HINDSIGHT_API_KEY=your-key" >> ~/.hermes/.env
 
 ---
 
-### Holographic
-
-Local SQLite fact store with FTS5 full-text search, trust scoring, and HRR (Holographic Reduced Representations) for compositional algebraic queries.
-
-| | |
-|---|---|
-| **Best for** | Local-only memory with advanced retrieval, no external dependencies |
-| **Requires** | Nothing (SQLite is always available). NumPy optional for HRR algebra. |
-| **Data storage** | Local SQLite |
-| **Cost** | Free |
-
-**Tools:** `fact_store` (9 actions: add, search, probe, related, reason, contradict, update, remove, list), `fact_feedback` (helpful/unhelpful rating that trains trust scores)
-
-**Setup:**
-```bash
-hermes memory setup    # select "holographic"
-# Or manually:
-hermes config set memory.provider holographic
-```
-
-**Config:** `config.yaml` under `plugins.hermes-memory-store`
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `db_path` | `$HERMES_HOME/memory_store.db` | SQLite database path |
-| `auto_extract` | `false` | Auto-extract facts at session end |
-| `default_trust` | `0.5` | Default trust score (0.0–1.0) |
-
-**Unique capabilities:**
-- `probe` — entity-specific algebraic recall (all facts about a person/thing)
-- `reason` — compositional AND queries across multiple entities
-- `contradict` — automated detection of conflicting facts
-- Trust scoring with asymmetric feedback (+0.05 helpful / -0.10 unhelpful)
-
----
 
 ### RetainDB
 
@@ -452,7 +417,6 @@ echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
 | **OpenViking** | Self-hosted | Free | 5 | `openviking` + server | Filesystem hierarchy + tiered loading |
 | **Mem0** | Cloud | Paid | 3 | `mem0ai` | Server-side LLM extraction |
 | **Hindsight** | Cloud/Local | Free/Paid | 3 | `hindsight-client` | Knowledge graph + reflect synthesis |
-| **Holographic** | Local | Free | 2 | None | HRR algebra + trust scoring |
 | **RetainDB** | Cloud | $20/mo | 5 | `requests` | Delta compression |
 | **ByteRover** | Local/Cloud | Free/Paid | 3 | `brv` CLI | Pre-compression extraction |
 | **Supermemory** | Cloud | Paid | 4 | `supermemory` | Context fencing + session graph ingest + multi-container |
@@ -461,7 +425,7 @@ echo 'SUPERMEMORY_API_KEY=***' >> ~/.hermes/.env
 
 Each provider's data is isolated per [profile](/docs/user-guide/profiles):
 
-- **Local storage providers** (Holographic, ByteRover) use `$HERMES_HOME/` paths which differ per profile
+- **Local storage providers** (ByteRover) use `$HERMES_HOME/` paths which differ per profile
 - **Config file providers** (Honcho, Mem0, Hindsight, Supermemory) store config in `$HERMES_HOME/` so each profile has its own credentials
 - **Cloud providers** (RetainDB) auto-derive profile-scoped project names
 - **Env var providers** (OpenViking) are configured via each profile's `.env` file

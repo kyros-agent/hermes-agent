@@ -465,7 +465,7 @@ class TestSingleProviderGating:
         # Simulate what run_agent.py does when provider="" 
         configured = ""
         available_plugins = [
-            FakeMemoryProvider("holographic"),
+            FakeMemoryProvider("honcho"),
             FakeMemoryProvider("mem0"),
         ]
         # With empty config, no plugins should be added
@@ -482,8 +482,8 @@ class TestSingleProviderGating:
         builtin = BuiltinMemoryProvider()
         mgr.add_provider(builtin)
 
-        configured = "holographic"
-        p1 = FakeMemoryProvider("holographic")
+        configured = "honcho"
+        p1 = FakeMemoryProvider("honcho")
         p2 = FakeMemoryProvider("mem0")
         p3 = FakeMemoryProvider("hindsight")
 
@@ -491,7 +491,7 @@ class TestSingleProviderGating:
             if p.name == configured and p.is_available():
                 mgr.add_provider(p)
 
-        assert mgr.provider_names == ["builtin", "holographic"]
+        assert mgr.provider_names == ["builtin", "honcho"]
         assert p1.initialized is False  # not initialized by the gating logic itself
 
     def test_unavailable_provider_skipped(self):
@@ -500,8 +500,8 @@ class TestSingleProviderGating:
         builtin = BuiltinMemoryProvider()
         mgr.add_provider(builtin)
 
-        configured = "holographic"
-        p1 = FakeMemoryProvider("holographic", available=False)
+        configured = "honcho"
+        p1 = FakeMemoryProvider("honcho", available=False)
 
         for p in [p1]:
             if p.name == configured and p.is_available():
@@ -516,7 +516,7 @@ class TestSingleProviderGating:
         mgr.add_provider(builtin)
 
         configured = "nonexistent"
-        plugins = [FakeMemoryProvider("holographic"), FakeMemoryProvider("mem0")]
+        plugins = [FakeMemoryProvider("honcho"), FakeMemoryProvider("mem0")]
 
         for p in plugins:
             if p.name == configured and p.is_available():
@@ -533,14 +533,14 @@ class TestPluginMemoryDiscovery:
         from plugins.memory import discover_memory_providers
         providers = discover_memory_providers()
         names = [name for name, _, _ in providers]
-        assert "holographic" in names  # always available (no external deps)
+        assert "honcho" in names  # always available (no external deps)
 
     def test_load_provider_by_name(self):
         """load_memory_provider returns a working provider instance."""
         from plugins.memory import load_memory_provider
-        p = load_memory_provider("holographic")
+        p = load_memory_provider("honcho")
         assert p is not None
-        assert p.name == "holographic"
+        assert p.name == "honcho"
         assert p.is_available()
 
     def test_load_nonexistent_returns_none(self):
@@ -811,7 +811,7 @@ class TestMemoryContextFencing:
     def test_build_memory_context_block_wraps_content(self):
         from agent.memory_manager import build_memory_context_block
         result = build_memory_context_block(
-            "## Holographic Memory\n- [0.8] user likes dark mode"
+            "## Honcho Memory\n- [0.8] user likes dark mode"
         )
         assert result.startswith("<memory-context>")
         assert result.rstrip().endswith("</memory-context>")
@@ -840,7 +840,7 @@ class TestMemoryContextFencing:
 
     def test_fenced_block_separates_user_from_recall(self):
         from agent.memory_manager import build_memory_context_block
-        prefetch = "## Holographic Memory\n- [0.9] user is named Alice"
+        prefetch = "## Honcho Memory\n- [0.9] user is named Alice"
         block = build_memory_context_block(prefetch)
         user_msg = "What's the weather today?"
         combined = user_msg + "\n\n" + block
