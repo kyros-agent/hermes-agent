@@ -138,10 +138,7 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
 
 
 def _check_browser_backend_and_profile_config(issues: list[str]) -> None:
-    """Check Camofox health and detect legacy root/profile config drift."""
-    print()
-    print(color("◆ Browser Backend", Colors.CYAN, Colors.BOLD))
-
+    """Check the active Camofox backend when Hermes is configured to use it."""
     try:
         from hermes_cli.config import read_raw_config
         cfg = read_raw_config()
@@ -152,6 +149,14 @@ def _check_browser_backend_and_profile_config(issues: list[str]) -> None:
     browser_cfg = cfg.get("browser") if isinstance(cfg.get("browser"), dict) else {}
     camofox_cfg = browser_cfg.get("camofox") if isinstance(browser_cfg.get("camofox"), dict) else {}
     camofox_url = os.environ.get("CAMOFOX_URL", "").strip()
+
+    # Only surface this section when the Camofox path is actually in play.
+    # Generic Hermes installations should stay quiet here.
+    if not camofox_url and not camofox_cfg:
+        return
+
+    print()
+    print(color("◆ Browser Backend", Colors.CYAN, Colors.BOLD))
 
     if camofox_url:
         parsed = None

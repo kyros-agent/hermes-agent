@@ -192,6 +192,25 @@ def test_browser_backend_warns_when_camofox_unreachable(monkeypatch, tmp_path, c
     assert any("unreachable" in issue for issue in issues)
 
 
+def test_browser_backend_section_is_silent_when_unconfigured(monkeypatch, tmp_path, capsys):
+    """Hermes should stay quiet when Camofox is not configured at all."""
+    home = tmp_path / ".hermes"
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "config.yaml").write_text("{}\n")
+
+    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.delenv("CAMOFOX_URL", raising=False)
+    monkeypatch.setattr(doctor_mod, "HERMES_HOME", home)
+    monkeypatch.setattr("hermes_cli.config.get_hermes_home", lambda: home)
+
+    issues = []
+    doctor._check_browser_backend_and_profile_config(issues)
+
+    out = capsys.readouterr().out
+    assert out == ""
+    assert issues == []
+
+
 # ── Memory provider section (doctor should only check the *active* provider) ──
 
 

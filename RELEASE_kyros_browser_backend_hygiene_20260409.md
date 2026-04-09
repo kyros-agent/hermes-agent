@@ -10,6 +10,7 @@ This private experimental release hardens Hermes browser configuration and diagn
 
 - Added config validation that warns when browser automation MCP servers are registered in `mcp_servers`
 - Added doctor checks for the active Camofox backend and profile-scoped persistence
+- Gated the browser doctor section so generic Hermes setups stay quiet unless Camofox is actually configured
 - Added tests covering the browser MCP hygiene and doctor behavior
 - Removed an incorrect root-vs-profile drift check that produced false positives
 
